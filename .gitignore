@@ -1,0 +1,17 @@
+*.suo
+*.tmp
+*.Generated.cs
+*.Generated.Event.cs
+Ignored/
+*.cachefile
+*.gvwx
+StarBlaster/StarBlaster/StarBlaster/bin/
+StarBlaster/StarBlaster/StarBlaster/obj/
+*.aeproperties
+*.csvSettings
+*.splsetx
+StarBlaster/StarBlaster/StarBlasterContent/obj/
+*.cache
+StarBlaster/StarBlaster/bin/
+StarBlaster/StarBlaster/obj/
+StarBlaster/StarBlasterContent/obj/
