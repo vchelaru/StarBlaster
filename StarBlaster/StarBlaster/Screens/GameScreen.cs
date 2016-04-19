@@ -65,30 +65,29 @@ namespace StarBlaster.Screens
         private void AddEnemySpawning()
         {
             var values = new EnemyCreationValues();
-            //values.Spline = SplinePaths.Find(item=>item.Name == "LtoRLoop");
-            //values.Count = 5;
-            //values.Delay = 3;
-            //values.EnemyInfo = GlobalContent.EnemyInfo[EnemyInfo.Regular];
+            values.Spline = SplinePaths.Find(item => item.Name == "LtoRLoop");
+            values.Count = 5;
+            values.Delay = 3;
+            values.EnemyInfo = GlobalContent.EnemyInfo[EnemyInfo.Regular];
 
-            //CreateEnemyShips(values);
+            CreateEnemyShips(values);
 
 
-            //for(int i = 0; i < 10; i++)
-            //{
-            //    values = new EnemyCreationValues();
-            //    values.Spline = SplinePaths.Find(item=>item.Name == "DownThenUp");
-            //    values.Count = 1;
-            //    values.Delay = 10 + i/2.0f;
-            //    values.EnemyInfo = GlobalContent.EnemyInfo[EnemyInfo.Regular];
-            //    values.Offset = new Vector3(-300 + i * 600 / 10, 0, 0);
+            for (int i = 0; i < 10; i++)
+            {
+                values = new EnemyCreationValues();
+                values.Spline = SplinePaths.Find(item => item.Name == "DownThenUp");
+                values.Count = 1;
+                values.Delay = 10 + i / 2.0f;
+                values.EnemyInfo = GlobalContent.EnemyInfo[EnemyInfo.Regular];
+                values.Offset = new Vector3(-300 + i * 600 / 10, 0, 0);
 
-            //    CreateEnemyShips(values);
+                CreateEnemyShips(values);
 
-            //}
+            }
 
             values = new EnemyCreationValues();
-            values.Delay = 1;
-            //values.Delay = 15;
+            values.Delay = 15;
             values.EnemyInfo = GlobalContent.EnemyInfo[EnemyInfo.ExtraBig];
             values.Spline = SplinePaths.Find(item => item.Name == "LeftToRight");
             values.SplinePointToLoopTo = 2;
