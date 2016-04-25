@@ -96,12 +96,6 @@
     <Reference Include="mscorlib">
       <Private>False</Private>
     </Reference>
-    <Reference Include="OcularPlane">
-      <HintPath>..\..\..\..\OcularPlane\OcularPlane.Networking.WcfTcp.Host\bin\Debug\OcularPlane.dll</HintPath>
-    </Reference>
-    <Reference Include="OcularPlane.Networking.WcfTcp.Host">
-      <HintPath>..\..\..\..\OcularPlane\OcularPlane.Networking.WcfTcp.Host\bin\Debug\OcularPlane.Networking.WcfTcp.Host.dll</HintPath>
-    </Reference>
     <Reference Include="System">
       <Private>False</Private>
     </Reference>

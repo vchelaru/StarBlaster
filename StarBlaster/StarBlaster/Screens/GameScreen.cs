@@ -19,8 +19,6 @@ using FlatRedBall.Localization;
 using StarBlaster.Entities;
 using StarBlaster.Factories;
 using StarBlaster.DataTypes;
-using OcularPlane;
-using OcularPlane.Networking.WcfTcp.Host;
 using System.Collections.Specialized;
 
 #if FRB_XNA || SILVERLIGHT
@@ -40,26 +38,12 @@ namespace StarBlaster.Screens
             // We'll handle it ourselves since we will have enemy and player bullets
             BulletFactory.ScreenListReference = null;
 
-            this.PlayerShipList.CollectionChanged += HandleCollectionChanged;
-
             CreatePlayer();
 
             AddEnemySpawning();
 
             CalculateSplineValues();
 
-        }
-
-        private void HandleCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (e.Action == NotifyCollectionChangedAction.Add)
-            {
-                foreach (var item in e.NewItems)
-                {
-                    containerManager.AddObjectToContainer(nameof(GameScreen),
-                        item, nameof(ExplosionInstance));
-                }
-            }
         }
 
         private void AddEnemySpawning()
