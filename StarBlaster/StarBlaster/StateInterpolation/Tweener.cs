@@ -6,11 +6,11 @@ namespace FlatRedBall.Glue.StateInterpolation
     /// Delegate used for all tweening functions.
     /// </summary>
     /// <param name="timeElapsed">How much time has passed since the start of the tween.  If this is called over a period of time then this value will increase.</param>
-    /// <param name="start">The starting value value for tweening.  For example this may be the X position of an object.</param>
-    /// <param name="change">The value when the tween is finished.  For example this may be the ending X position of an object.</param>
-    /// <param name="duration">How long (in seconds) that the tween will last.</param>
+    /// <param name="startingValue">The starting value value for tweening.  For example this may be the X position of an object.</param>
+    /// <param name="endingValue">The value when the tween is finished.  For example this may be the ending X position of an object.</param>
+    /// <param name="durationInSeconds">How long (in seconds) that the tween will last.</param>
     /// <returns>The resulting value.</returns>
-    public delegate float TweeningFunction(float timeElapsed, float start, float change, float duration);
+    public delegate float TweeningFunction(float timeElapsed, float startingValue, float endingValue, float durationInSeconds);
 
     #region Enums
 
@@ -384,7 +384,7 @@ namespace FlatRedBall.Glue.StateInterpolation
 
         public override string ToString()
         {
-#if WINDOWS_8
+#if WINDOWS_8 || UWP
             return String.Format("Tween {0} -> {1} in {2}s. Elapsed {3:##0.##}s",
                 from, 
                 from + change, 

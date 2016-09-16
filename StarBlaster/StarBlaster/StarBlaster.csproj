@@ -189,6 +189,7 @@
     <Compile Include="StateInterpolation\TweenerManager.cs" />
     <Compile Include="TileCollisions\TileShapeCollection.cs" />
     <Compile Include="TileEntities\TileEntityInstantiator.cs" />
+    <Compile Include="TileGraphics\AbstractMapLayer.cs" />
     <Compile Include="TileGraphics\AnimationChainContainer.cs" />
     <Compile Include="TileGraphics\ExternalTileset.cs" />
     <Compile Include="TileGraphics\LayeredTileMap.cs" />
@@ -197,6 +198,7 @@
     <Compile Include="TileGraphics\MapLayer.cs" />
     <Compile Include="TileGraphics\MapTileset.cs" />
     <Compile Include="TileGraphics\MapTilesetTile.cs" />
+    <Compile Include="TileGraphics\NamedValue.cs" />
     <Compile Include="TileGraphics\ReducedTileMapInfo.cs" />
     <Compile Include="TileGraphics\ReducedTileMapInfo.TiledMapSave.cs">
       <DependentUpon>ReducedTileMapInfo.cs</DependentUpon>
