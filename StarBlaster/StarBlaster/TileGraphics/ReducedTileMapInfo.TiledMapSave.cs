@@ -61,14 +61,18 @@ namespace TMXGlueLib.DataTypes
         /// <returns></returns>
         public static ReducedTileMapInfo FromTiledMapSave(TiledMapSave tiledMapSave, float scale, float zOffset, string directory, FileReferenceType referenceType)
         {
-            var toReturn = new ReducedTileMapInfo();
+            var toReturn = new ReducedTileMapInfo
+            {
+                NumberCellsTall = tiledMapSave.Height,
+                NumberCellsWide = tiledMapSave.Width
+            };
 
-            toReturn.NumberCellsTall = tiledMapSave.Height;
-            toReturn.NumberCellsWide = tiledMapSave.Width;
 
             var ses = tiledMapSave.ToSceneSave(scale, referenceType);
 
-            ses.SpriteList.Sort((first, second) => first.Z.CompareTo(second.Z));
+            // This is not a stable sort!
+            //ses.SpriteList.Sort((first, second) => first.Z.CompareTo(second.Z));
+            ses.SpriteList = ses.SpriteList.OrderBy(item => item.Z).ToList();
 
             ReducedLayerInfo reducedLayerInfo = null;
 
@@ -89,38 +93,109 @@ namespace TMXGlueLib.DataTypes
             int textureWidth = 0;
             int textureHeight = 0;
 
+            AbstractMapLayer currentLayer = null;
+            int indexInLayer = 0;
 
-            for (int i = 0; i < ses.SpriteList.Count; i++)
+
+            foreach (var spriteSave in ses.SpriteList)
             {
-                SpriteSave spriteSave = ses.SpriteList[i];
-
                 if (spriteSave.Z != z)
                 {
+                    indexInLayer = 0;
                     z = spriteSave.Z;
-                    reducedLayerInfo = new ReducedLayerInfo();
-                    reducedLayerInfo.Z = spriteSave.Z;
-                    reducedLayerInfo.Texture = spriteSave.Texture;
+
 
                     int layerIndex = FlatRedBall.Math.MathFunctions.RoundToInt(z - zOffset);
-                    var mapLayer = tiledMapSave.Layers[layerIndex];
+                    var abstractMapLayer = tiledMapSave.MapLayers[layerIndex];
+                    currentLayer = abstractMapLayer;
 
+                    reducedLayerInfo = new ReducedLayerInfo
+                    {
+                        Z = spriteSave.Z,
+                        Texture = spriteSave.Texture,
+                        Name = abstractMapLayer.Name,
+                        TileWidth = FlatRedBall.Math.MathFunctions.RoundToInt(spriteSave.ScaleX * 2),
+                        TileHeight = FlatRedBall.Math.MathFunctions.RoundToInt(spriteSave.ScaleY * 2)
+                    };
 
+                    var mapLayer = abstractMapLayer as MapLayer;
                     // This should have data:
+                    if (mapLayer != null)
+                    {
+                        var idOfTexture = mapLayer.data[0].tiles.FirstOrDefault(item => item != 0);
+                        Tileset tileSet = tiledMapSave.GetTilesetForGid(idOfTexture);
+                        var tilesetIndex = tiledMapSave.Tilesets.IndexOf(tileSet);
 
-                    var idOfTexture = mapLayer.data[0].tiles.FirstOrDefault(item => item != 0);
-                    Tileset tileSet = tiledMapSave.GetTilesetForGid(idOfTexture);
-                    var tilesetIndex = tiledMapSave.Tilesets.IndexOf(tileSet);
+                        textureWidth = tileSet.Images[0].width;
+                        textureHeight = tileSet.Images[0].height;
 
-                    textureWidth = tileSet.Images[0].width;
-                    textureHeight = tileSet.Images[0].height;
+                        reducedLayerInfo.TextureId = tilesetIndex;
+                        toReturn.Layers.Add(reducedLayerInfo);
+                    }
 
-                    reducedLayerInfo.Name = mapLayer.Name;
-                    reducedLayerInfo.TextureId = tilesetIndex;
-                    toReturn.Layers.Add(reducedLayerInfo);
+
+                    var objectGroup = tiledMapSave.MapLayers[layerIndex] as mapObjectgroup;
+
+                    // This code only works based on the assumption that only one tileset will be used in any given object layer's image objects
+                    var mapObjectgroupObject = objectGroup?.@object.FirstOrDefault(o => o.gid != null);
+
+                    if (mapObjectgroupObject?.gid != null)
+                    {
+                        var idOfTexture = mapObjectgroupObject.gid.Value;
+                        Tileset tileSet = tiledMapSave.GetTilesetForGid(idOfTexture);
+                        var tilesetIndex = tiledMapSave.Tilesets.IndexOf(tileSet);
+
+                        textureWidth = tileSet.Images[0].width;
+                        textureHeight = tileSet.Images[0].height;
+                        reducedLayerInfo.TextureId = tilesetIndex;
+                        toReturn.Layers.Add(reducedLayerInfo);
+                    }
                 }
 
                 ReducedQuadInfo quad = ReducedQuadInfo.FromSpriteSave(spriteSave, textureWidth, textureHeight);
-                reducedLayerInfo.Quads.Add(quad);
+
+                if (currentLayer is mapObjectgroup)
+                {
+                    var objectInstance = (currentLayer as mapObjectgroup).@object[indexInLayer];
+
+                    if (objectInstance.properties.Count != 0)
+                    {
+                        var nameProperty = objectInstance.properties.FirstOrDefault(item => item.StrippedNameLower == "name");
+                        if (nameProperty != null)
+                        {
+                            quad.Name = nameProperty.value;
+                        }
+                        else
+                        {
+                            quad.Name = spriteSave.Name;
+
+                            bool needsName = string.IsNullOrEmpty(spriteSave.Name);
+                            if (needsName)
+                            {
+                                quad.Name = $"_{currentLayer.Name}runtime{indexInLayer}";
+                            }
+                        }
+
+                        List<NamedValue> list = new List<NamedValue>();
+
+                        foreach (var property in objectInstance.properties)
+                        {
+                            list.Add(
+                                new NamedValue
+                                {
+                                    Name = property.StrippedName,
+                                    Value = property.value
+                                }
+                            );
+                        }
+
+                        quad.QuadSpecificProperties = list;
+                    }
+                }
+
+                reducedLayerInfo?.Quads.Add(quad);
+
+                indexInLayer++;
             }
             return toReturn;
 
@@ -138,7 +213,6 @@ namespace TMXGlueLib.DataTypes
                 toReturn.QuadHeight = spriteSave.ScaleY * 2;
             }
         }
-        
 
 
     }

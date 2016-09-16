@@ -36,14 +36,14 @@ namespace TMXGlueLib
 
             foreach (mapObjectgroup group in tiledMapSave.objectgroup)
             {
-                if (group.@object != null && !string.IsNullOrEmpty(group.name) && (string.IsNullOrEmpty(layerName) || group.name.Equals(layerName)))
+                if (group.@object != null && !string.IsNullOrEmpty(group.Name) && (string.IsNullOrEmpty(layerName) || group.Name.Equals(layerName)))
                 {
                     foreach (mapObjectgroupObject @object in group.@object)
                     {
                         ///November 8th, 2015
                         ///Jesse Crafts-Finch
                         ///If a polygon has a gid, and therefore an image associate with it, it will be turned into a spritesave, not a polygon. 
-                        if (!String.IsNullOrEmpty(@object.gid))
+                        if (@object.gid != null)
                         {
                             continue; 
                         }

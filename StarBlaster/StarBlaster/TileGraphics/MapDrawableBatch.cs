@@ -12,6 +12,7 @@ using FlatRedBall.IO;
 using FlatRedBall.Input;
 using FlatRedBall.Debugging;
 using FlatRedBall.Math;
+using TMXGlueLib.DataTypes;
 
 namespace FlatRedBall.TileGraphics
 {
@@ -22,7 +23,7 @@ namespace FlatRedBall.TileGraphics
         Y
     }
 
-    public class MapDrawableBatch : PositionedObject, IDrawableBatch
+    public class MapDrawableBatch : PositionedObject, IVisible, IDrawableBatch
     {
         #region Fields
         protected Tileset mTileset;
@@ -35,11 +36,15 @@ namespace FlatRedBall.TileGraphics
         private static BasicEffect mBasicEffect;
         private static AlphaTestEffect mAlphaTestEffect;
 
-        #region XML Docs
         /// <summary>
-        /// The vertices used to draw the shape
+        /// The vertices used to draw the map.
         /// </summary>
-        #endregion
+        /// <remarks>
+        /// Coordinate order is:
+        /// 3   2
+        ///
+        /// 0   1
+        /// </remarks>
         protected VertexPositionTexture[] mVertices;
         protected Texture2D mTexture;
         #region XML Docs
@@ -47,7 +52,7 @@ namespace FlatRedBall.TileGraphics
         /// The indices to draw the shape
         /// </summary>
         #endregion
-        protected short[] mIndices;
+        protected int[] mIndices;
 
         Dictionary<string, List<int>> mNamedTileOrderedIndexes = new Dictionary<string, List<int>>();
 
@@ -60,11 +65,11 @@ namespace FlatRedBall.TileGraphics
 
         #region Properties
 
-        public List<NamedValue> Properties
+        public List<TMXGlueLib.DataTypes.NamedValue> Properties
         {
             get;
             private set;
-        } = new List<NamedValue>();
+        } = new List<TMXGlueLib.DataTypes.NamedValue>();
 
         public SortAxis SortAxis
         {
@@ -165,6 +170,12 @@ namespace FlatRedBall.TileGraphics
 
         #region Constructor / Initialization
 
+        // this exists purely for Clone
+        public MapDrawableBatch()
+        {
+
+        }
+
         public MapDrawableBatch(int numberOfTiles, Texture2D texture)
             : base()
         {
@@ -176,7 +187,7 @@ namespace FlatRedBall.TileGraphics
 
             mTexture = texture;
             mVertices = new VertexPositionTexture[4 * numberOfTiles];
-            mIndices = new short[6 * numberOfTiles];
+            mIndices = new int[6 * numberOfTiles];
         }
 
         #region XML Docs
@@ -195,7 +206,7 @@ namespace FlatRedBall.TileGraphics
 
             mTexture = texture;
             mVertices = new VertexPositionTexture[4 * numberOfTiles];
-            mIndices = new short[6 * numberOfTiles];
+            mIndices = new int[6 * numberOfTiles];
 
             mTileset = new Tileset(texture, textureTileDimensionWidth, textureTileDimensionHeight);
         }
@@ -386,12 +397,20 @@ namespace FlatRedBall.TileGraphics
             return mMapBatch;
         }
 
-        internal static MapDrawableBatch FromReducedLayer(TMXGlueLib.DataTypes.ReducedLayerInfo reducedLayerInfo, TMXGlueLib.DataTypes.ReducedTileMapInfo rtmi, string contentManagerName)
+        public MapDrawableBatch Clone()
         {
-            int tileDimensionWidth = rtmi.CellWidthInPixels;
-            int tileDimensionHeight = rtmi.CellHeightInPixels;
-            float quadWidth = rtmi.QuadWidth;
-            float quadHeight = rtmi.QuadHeight;
+            return base.Clone<MapDrawableBatch>();
+        }
+
+        // Bring the texture coordinates in to adjust for rendering issues on dx9/ogl
+        public const float CoordinateAdjustment = .00002f;
+
+        internal static MapDrawableBatch FromReducedLayer(TMXGlueLib.DataTypes.ReducedLayerInfo reducedLayerInfo, LayeredTileMap owner, TMXGlueLib.DataTypes.ReducedTileMapInfo rtmi, string contentManagerName)
+        {
+            int tileDimensionWidth = reducedLayerInfo.TileWidth;
+            int tileDimensionHeight = reducedLayerInfo.TileHeight;
+            float quadWidth = reducedLayerInfo.TileWidth;
+            float quadHeight = reducedLayerInfo.TileHeight;
 
             string textureName = reducedLayerInfo.Texture;
 
@@ -403,12 +422,7 @@ namespace FlatRedBall.TileGraphics
 #endif
 
             Texture2D texture = FlatRedBallServices.Load<Texture2D>(textureName, contentManagerName);
-#if DEBUG
-            if (!MathFunctions.IsPowerOfTwo(texture.Width) || !MathFunctions.IsPowerOfTwo(texture.Height))
-            {
-                throw new Exception("The dimensions of the texture file " + texture.Name + " are not power of 2!");
-            }
-#endif
+
             MapDrawableBatch toReturn = new MapDrawableBatch(reducedLayerInfo.Quads.Count, tileDimensionWidth, tileDimensionHeight, texture);
 
             toReturn.Name = reducedLayerInfo.Name;
@@ -439,11 +453,12 @@ namespace FlatRedBall.TileGraphics
                 // A multi-layer map will offset the individual layer Z values, the quads should have a Z of 0.
                 // position.Z = reducedLayerInfo.Z;
 
+
                 var textureValues = new Vector4();
-                textureValues.X = (float)quad.LeftTexturePixel / (float)texture.Width; // Left
-                textureValues.Y = (float)(quad.LeftTexturePixel + tileDimensionWidth) / (float)texture.Width; // Right
-                textureValues.Z = (float)quad.TopTexturePixel / (float)texture.Height; // Top
-                textureValues.W = (float)(quad.TopTexturePixel + tileDimensionHeight) / (float)texture.Height; // Bottom
+                textureValues.X = CoordinateAdjustment + (float)quad.LeftTexturePixel / (float)texture.Width; // Left
+                textureValues.Y = -CoordinateAdjustment + (float)(quad.LeftTexturePixel + tileDimensionWidth) / (float)texture.Width; // Right
+                textureValues.Z = CoordinateAdjustment + (float)quad.TopTexturePixel / (float)texture.Height; // Top
+                textureValues.W = -CoordinateAdjustment + (float)(quad.TopTexturePixel + tileDimensionHeight) / (float)texture.Height; // Bottom
 
                 // pad before doing any rotations/flipping
                 const bool pad = true;
@@ -477,6 +492,13 @@ namespace FlatRedBall.TileGraphics
                 if ((quad.FlipFlags & TMXGlueLib.DataTypes.ReducedQuadInfo.FlippedDiagonallyFlag) == TMXGlueLib.DataTypes.ReducedQuadInfo.FlippedDiagonallyFlag)
                 {
                     toReturn.ApplyDiagonalFlip(tileIndex);
+                }
+
+                if (quad.QuadSpecificProperties != null)
+                {
+                    var listToAdd = quad.QuadSpecificProperties.ToList();
+                    listToAdd.Add(new NamedValue { Name = "Name", Value = quad.Name });
+                    owner.Properties.Add(quad.Name, listToAdd);
                 }
 
                 toReturn.RegisterName(quad.Name, tileIndex);
@@ -743,12 +765,12 @@ namespace FlatRedBall.TileGraphics
             mVertices[currentVertex + 3] = new VertexPositionTexture(new Vector3(xOffset + 0f, yOffset + height, zOffset), new Vector2(texture.X, texture.Z));
 
             // create indices
-            mIndices[currentIndex + 0] = (short)(currentVertex + 0);
-            mIndices[currentIndex + 1] = (short)(currentVertex + 1);
-            mIndices[currentIndex + 2] = (short)(currentVertex + 2);
-            mIndices[currentIndex + 3] = (short)(currentVertex + 0);
-            mIndices[currentIndex + 4] = (short)(currentVertex + 2);
-            mIndices[currentIndex + 5] = (short)(currentVertex + 3);
+            mIndices[currentIndex + 0] = currentVertex + 0;
+            mIndices[currentIndex + 1] = currentVertex + 1;
+            mIndices[currentIndex + 2] = currentVertex + 2;
+            mIndices[currentIndex + 3] = currentVertex + 0;
+            mIndices[currentIndex + 4] = currentVertex + 2;
+            mIndices[currentIndex + 5] = currentVertex + 3;
 
             mCurrentNumberOfTiles++;
 
@@ -787,7 +809,7 @@ namespace FlatRedBall.TileGraphics
         {
             ////////////////////Early Out///////////////////
 
-            if (!Visible)
+            if (!AbsoluteVisible)
             {
                 return;
             }
@@ -809,43 +831,8 @@ namespace FlatRedBall.TileGraphics
 
             if (numberOfTriangles != 0)
             {
-                
-                // Set graphics states
-                FlatRedBallServices.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
-                FlatRedBall.Graphics.Renderer.BlendOperation = BlendOperation.Regular;
-
-                Effect effectTouse = null;
-
-                if (ZBuffered)
-                {
-                    FlatRedBallServices.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
-                    camera.SetDeviceViewAndProjection(mAlphaTestEffect, false);
-
-                    mAlphaTestEffect.World = Matrix.CreateScale(RenderingScale) * base.TransformationMatrix;
-                    mAlphaTestEffect.Texture = mTexture;
-
-                    effectTouse = mAlphaTestEffect;
-                }
-                else
-                {
-                    camera.SetDeviceViewAndProjection(mBasicEffect, false);
-
-                    mBasicEffect.World = Matrix.CreateScale(RenderingScale) * base.TransformationMatrix;
-                    mBasicEffect.Texture = mTexture;
-                    effectTouse = mBasicEffect;
-                }
-
-
-                // We won't need to use any other kind of texture
-                // address mode besides clamp, and clamp is required
-                // on the "Reach" profile when the texture is not power
-                // of two.  Let's set it to clamp here so that we don't crash
-                // on non-power-of-two textures.
-                TextureAddressMode oldTextureAddressMode = Renderer.TextureAddressMode;
-                Renderer.TextureAddressMode = TextureAddressMode.Clamp;
-
-
-
+                TextureAddressMode oldTextureAddressMode;
+                Effect effectTouse = PrepareRenderingStates(camera, out oldTextureAddressMode);
 
                 foreach (EffectPass pass in effectTouse.CurrentTechnique.Passes)
                 {
@@ -853,6 +840,7 @@ namespace FlatRedBall.TileGraphics
 
                     pass.Apply();
 
+                    int numberVertsToDraw = lastVertIndex - firstVertIndex;
 
                     // Right now this uses the (slower) DrawUserIndexedPrimitives
                     // It could use DrawIndexedPrimitives instead for much faster performance,
@@ -861,10 +849,11 @@ namespace FlatRedBall.TileGraphics
                     FlatRedBallServices.GraphicsDevice.DrawUserIndexedPrimitives<VertexPositionTexture>(
                         PrimitiveType.TriangleList,
                         mVertices,
-                        firstVertIndex, // 0, 
-                        lastVertIndex - firstVertIndex,// mVertices.Length,
+                        firstVertIndex,
+                        numberVertsToDraw,
                         mIndices,
                         indexStart, numberOfTriangles);
+
                 }
 
                 Renderer.TextureAddressMode = oldTextureAddressMode;
@@ -874,6 +863,49 @@ namespace FlatRedBall.TileGraphics
                 }
             }
 
+        }
+
+        private Effect PrepareRenderingStates(Camera camera, out TextureAddressMode oldTextureAddressMode)
+        {
+            // Set graphics states
+            FlatRedBallServices.GraphicsDevice.RasterizerState = RasterizerState.CullNone;
+            FlatRedBall.Graphics.Renderer.BlendOperation = BlendOperation.Regular;
+
+            Effect effectTouse = null;
+
+            if (ZBuffered)
+            {
+                FlatRedBallServices.GraphicsDevice.DepthStencilState = DepthStencilState.Default;
+                camera.SetDeviceViewAndProjection(mAlphaTestEffect, false);
+
+                mAlphaTestEffect.World = Matrix.CreateScale(RenderingScale) * base.TransformationMatrix;
+                mAlphaTestEffect.Texture = mTexture;
+
+                effectTouse = mAlphaTestEffect;
+            }
+            else
+            {
+                camera.SetDeviceViewAndProjection(mBasicEffect, false);
+
+                mBasicEffect.World = Matrix.CreateScale(RenderingScale) * base.TransformationMatrix;
+                mBasicEffect.Texture = mTexture;
+                effectTouse = mBasicEffect;
+            }
+
+
+
+            // We won't need to use any other kind of texture
+            // address mode besides clamp, and clamp is required
+            // on the "Reach" profile when the texture is not power
+            // of two.  Let's set it to clamp here so that we don't crash
+            // on non-power-of-two textures.
+            oldTextureAddressMode = Renderer.TextureAddressMode;
+            Renderer.TextureAddressMode = TextureAddressMode.Clamp;
+
+
+
+
+            return effectTouse;
         }
 
         private void GetRenderingIndexValues(Camera camera, out int firstVertIndex, out int lastVertIndex, out int indexStart, out int numberOfTriangles)
@@ -933,10 +965,13 @@ namespace FlatRedBall.TileGraphics
                 if (midItem > xGreaterThan)
                 {
                     // Is this the last one?
-                    if (mid * 4 + 4 >= list.Length)
-                    {
-                        return mid * 4;
-                    }
+                    // Not sure why this is here, because if we have just 2 items,
+                    // this will always return a value of 1 instead 
+                    //if (mid * 4 + 4 >= list.Length)
+                    //{
+                    //    return mid * 4;
+                    //}
+
                     // did we find it?
                     if (mid > 0 && list[(mid - 1) * 4].Position.X <= xGreaterThan)
                     {
@@ -989,10 +1024,12 @@ namespace FlatRedBall.TileGraphics
                 if (midItem > yGreaterThan)
                 {
                     // Is this the last one?
-                    if (mid * 4 + 4 >= list.Length)
-                    {
-                        return mid * 4;
-                    }
+                    // See comment in GetFirstAfterX
+                    //if (mid * 4 + 4 >= list.Length)
+                    //{
+                    //    return mid * 4;
+                    //}
+
                     // did we find it?
                     if (mid > 0 && list[(mid - 1) * 4].Position.Y <= yGreaterThan)
                     {
@@ -1042,9 +1079,9 @@ namespace FlatRedBall.TileGraphics
             float cameraOffsetX = leftView - CameraOriginX;
             float cameraOffsetY = topView - CameraOriginY;
 
-            this.RelativeX = cameraOffsetX*_parallaxMultiplierX;
-            this.RelativeY = cameraOffsetY*_parallaxMultiplierY;
-            
+            this.RelativeX = cameraOffsetX * _parallaxMultiplierX;
+            this.RelativeY = cameraOffsetY * _parallaxMultiplierY;
+
             this.TimedActivity(TimeManager.SecondDifference, TimeManager.SecondDifferenceSquaredDividedByTwo, TimeManager.LastSecondDifference);
 
             // The MapDrawableBatch may be attached to a LayeredTileMap (the container of all layers)
@@ -1059,6 +1096,45 @@ namespace FlatRedBall.TileGraphics
         // TODO: I would like to somehow make this a property on the LayeredTileMap, but right now it is easier to put them here
         public float CameraOriginY { get; set; }
         public float CameraOriginX { get; set; }
+
+        IVisible IVisible.Parent
+        {
+            get
+            {
+                return this.Parent as IVisible;
+            }
+        }
+
+        public bool AbsoluteVisible
+        {
+            get
+            {
+                if (this.Visible)
+                {
+                    var parentAsIVisible = this.Parent as IVisible;
+
+                    if (parentAsIVisible == null || IgnoresParentVisibility)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        // this is true, so return if the parent is visible:
+                        return parentAsIVisible.AbsoluteVisible;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
+        public bool IgnoresParentVisibility
+        {
+            get;
+            set;
+        }
 
         #region XML Docs
         /// <summary>
@@ -1088,7 +1164,7 @@ namespace FlatRedBall.TileGraphics
             var oldIndexes = mIndices;
 
             mVertices = new VertexPositionTexture[totalNumberOfVerts];
-            mIndices = new short[totalNumberOfIndexes];
+            mIndices = new int[totalNumberOfIndexes];
 
             oldVerts.CopyTo(mVertices, 0);
             oldIndexes.CopyTo(mIndices, 0);
@@ -1110,7 +1186,7 @@ namespace FlatRedBall.TileGraphics
 
                 for (int i = startIndex; i < startIndex + numberOfIndices; i++)
                 {
-                    mIndices[i] += (short)startVert;
+                    mIndices[i] += startVert;
                 }
 
                 for (int i = startVert; i < startVert + numberOfNewVertices; i++)

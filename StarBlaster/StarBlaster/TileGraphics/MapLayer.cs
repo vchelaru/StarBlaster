@@ -6,10 +6,10 @@ using System.Xml.Serialization;
 
 namespace TMXGlueLib
 {
-
-    /// <remarks/>
-    [XmlType(AnonymousType = true)]
-    public partial class MapLayer
+#if !UWP
+    [Serializable]
+#endif
+    public partial class MapLayer : AbstractMapLayer
     {
         #region Fields
 
@@ -75,20 +75,6 @@ namespace TMXGlueLib
                         layerData.length = width * height;
                     }
                 }
-            }
-        }
-
-        /// <remarks/>
-        [XmlAttribute("name")]
-        public string Name
-        {
-            get
-            {
-                return this.nameField;
-            }
-            set
-            {
-                this.nameField = value;
             }
         }
 
